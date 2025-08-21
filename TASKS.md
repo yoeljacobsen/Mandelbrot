@@ -9,6 +9,7 @@ This document lists the tasks required to develop the Mandelbrot set explorer, a
     -   [ ] Create a Makefile for building the project.
     -   [ ] Create and maintain a README.md file.
     -   [x] Set up a basic project structure with `src` and `tests` directories.
+    -   [x] Create a NiGui manual (`NIGUI_MANUAL.md`) based on local examples.
 -   [ ] **Mandelbrot Logic:**
     -   [ ] Implement the core Mandelbrot set calculation logic.
     -   [ ] Create a data structure to store the generated Mandelbrot set data.

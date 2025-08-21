@@ -1,5 +1,46 @@
 import nigui
 import complex
+import chroma
+
+type
+  Palette* = enum
+    Palette1
+    Palette2
+    Palette3
+    Palette4 # Corresponds to the one in GUI.png
+
+proc getColor(m: int, max_iter: int, palette: Palette): nigui.Color =
+  case palette:
+  of Palette1:
+    if m == max_iter:
+      result = nigui.rgb(0, 0, 0) # Black
+    else:
+      let c = (m * 255 div max_iter).uint8
+      result = nigui.rgb(c, c, c) # Grayscale
+  of Palette2:
+    if m == max_iter:
+      result = nigui.rgb(0, 0, 0)
+    else:
+      let c = (m * 10).uint8
+      result = nigui.rgb(c, c div 2, c div 4)
+  of Palette3:
+    if m == max_iter:
+      result = nigui.rgb(0, 0, 0)
+    else:
+      let c = (m * 5).uint8
+      result = nigui.rgb(c, c * 2, c * 3)
+  of Palette4:
+    # This palette attempts to mimic the one in GUI.png
+    if m == max_iter:
+      result = nigui.rgb(0, 0, 0) # Black for points inside the set
+    else:
+      let
+        hue = (m mod 256).float * 360.0 / 256.0
+        saturation = 1.0
+        value = if m < max_iter: 1.0 else: 0.0
+      let hsvColor = hsv(hue, saturation, value)
+      let rgbColor: chroma.Color = color(hsvColor)
+      result = nigui.rgb((rgbColor.r * 255).uint8, (rgbColor.g * 255).uint8, (rgbColor.b * 255).uint8)
 
 proc mandelbrot(c: Complex[float64], max_iter: int): int =
   var z = complex(0.0, 0.0)
@@ -7,7 +48,7 @@ proc mandelbrot(c: Complex[float64], max_iter: int): int =
     if z.abs > 2.0:
       return i
     z = z * z + c
-  return max_iter
+  return max_iter # Corrected: return max_iter if loop completes
 
 var
   minX: float64 = -2.5
@@ -15,6 +56,7 @@ var
   minY: float64 = -1.0
   maxY: float64 = 1.0
   maxIter: int = 255
+  currentPalette: Palette = Palette4 # Default to Palette4
 
 var
   isDragging: bool = false
@@ -33,12 +75,8 @@ proc drawMandelbrot(canvas: Canvas) =
       let x0 = minX + (rangeX * float(px) / float(Width))
       let y0 = minY + (rangeY * float(py) / float(Height))
       let c = complex(x0, y0)
-      let m = mandelbrot(c, maxIter) # Use max_iter = 255
-      let color = if m == 255:
-        rgb(0, 0, 0) # Black for points inside the set
-      else:
-        # Simple grayscale based on iteration count
-        rgb(m.uint8, m.uint8, m.uint8)
+      let m = mandelbrot(c, maxIter)
+      let color = getColor(m, maxIter, currentPalette)
       canvas.setPixel(px, py, color)
 
 proc main() =
@@ -78,8 +116,8 @@ proc main() =
   # Palette
   var paletteLabel = newLabel("Palette")
   controlPanel.add(paletteLabel)
-  var paletteComboBox = newComboBox(@["1", "2", "3", "4"]) # Placeholder options
-  paletteComboBox.index = 3 # Selects "4"
+  var paletteComboBox = newComboBox(@["Palette 1", "Palette 2", "Palette 3", "Palette 4"])
+  paletteComboBox.index = 3 # Selects "Palette 4"
   controlPanel.add(paletteComboBox)
 
   # Normalized checkbox
@@ -143,9 +181,19 @@ proc main() =
   mandelbrotControl.onDraw = proc(event: DrawEvent) =
     drawMandelbrot(event.control.canvas)
     if isDragging:
-      event.control.canvas.lineColor = rgb(255, 255, 255) # White rectangle
+      event.control.canvas.lineColor = nigui.rgb(255, 255, 255) # White rectangle
       event.control.canvas.drawRectOutline(min(startX, endX), min(startY, endY),
                                       abs(endX - startX), abs(endY - startY))
+
+  # Event handler for palette ComboBox
+  paletteComboBox.onChange = proc(event: ComboBoxChangeEvent) =
+    case paletteComboBox.index:
+    of 0: currentPalette = Palette1
+    of 1: currentPalette = Palette2
+    of 2: currentPalette = Palette3
+    of 3: currentPalette = Palette4
+    else: discard
+    mandelbrotControl.forceRedraw()
 
   window.show()
   app.run()
