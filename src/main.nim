@@ -2,6 +2,7 @@ import nigui
 import complex
 import chroma
 import threadpool
+import math # Added for PI
 
 type
   Palette* = enum
@@ -31,17 +32,17 @@ proc getColor(m: int, max_iter: int, palette: Palette): nigui.Color =
       let c = (m * 5).uint8
       result = nigui.rgb(c, c * 2, c * 3)
   of Palette4:
-    # This palette attempts to mimic the one in GUI.png
+    # This palette attempts to mimic the one in GUI.png with a smooth gradient
     if m == max_iter:
       result = nigui.rgb(0, 0, 0) # Black for points inside the set
     else:
       let
-        hue = (m mod 256).float * 360.0 / 256.0
-        saturation = 1.0
-        value = 1.0 # Always full value for points outside the set
-      let hsvColor = hsv(hue, saturation, value)
-      let rgbColor: chroma.Color = color(hsvColor)
-      result = nigui.rgb((rgbColor.r * 255).uint8, (rgbColor.g * 255).uint8, (rgbColor.b * 255).uint8)
+        normalized_m = m.float / max_iter.float
+        # Using sinusoidal mapping for smooth color transitions
+        r = (sin(0.5 * normalized_m * PI) * 255).uint8
+        g = (sin(0.5 * normalized_m * PI + 2*PI/3) * 255).uint8
+        b = (sin(0.5 * normalized_m * PI + 4*PI/3) * 255).uint8
+      result = nigui.rgb(r, g, b)
 
 proc mandelbrot(c: Complex[float64], max_iter: int): int =
   var z = complex(0.0, 0.0)
@@ -90,7 +91,7 @@ proc calculateMandelbrotAsync(minX, maxX, minY, maxY: float64, maxIter: int, pal
   pixelChannel.send(pixels) # Send calculated pixels to the main thread via channel
 
 # Triggers the Mandelbrot calculation in a separate thread
-proc drawMandelbrot(canvas: Canvas) =
+proc triggerMandelbrotCalculation() =
   spawn calculateMandelbrotAsync(minX, maxX, minY, maxY, maxIter, currentPalette)
 
 proc main() =
@@ -193,12 +194,14 @@ proc main() =
       minY = newMinY
       maxY = newMaxY
 
-      mandelbrotControl.forceRedraw() # Redraw with new zoom
+      triggerMandelbrotCalculation() # Trigger new calculation after zoom
+      mandelbrotControl.forceRedraw() # Redraw to clear selection rectangle
     elif event.button == MouseButton_Right: # Zoom out with right click
       minX = -2.5
       maxX = 1.0
       minY = -1.0
       maxY = 1.0
+      triggerMandelbrotCalculation() # Trigger new calculation after zoom out
       mandelbrotControl.forceRedraw()
 
   # Drawing event handler for the Mandelbrot control
@@ -214,10 +217,6 @@ proc main() =
       event.control.canvas.drawRectOutline(min(startX, endX), min(startY, endY),
                                       abs(endX - startX), abs(endY - startY))
 
-    # Trigger calculation if not already calculating (e.g., on initial draw or after zoom/palette change)
-    # A more robust solution would involve a state machine to prevent multiple calculations
-    drawMandelbrot(event.control.canvas) # This now only spawns the async calculation
-
   # Event handler for palette ComboBox
   paletteComboBox.onChange = proc(event: ComboBoxChangeEvent) =
     case paletteComboBox.index:
@@ -226,6 +225,7 @@ proc main() =
     of 2: currentPalette = Palette3
     of 3: currentPalette = Palette4
     else: discard
+    triggerMandelbrotCalculation() # Trigger new calculation after palette change
     mandelbrotControl.forceRedraw()
 
   # Timer to check for new pixel data from the channel
@@ -236,6 +236,9 @@ proc main() =
       currentImagePixels = receivedPixels # Store the received pixels
       mandelbrotControl.forceRedraw() # Trigger redraw of the Mandelbrot control
   )
+
+  # Initial calculation when the application starts
+  triggerMandelbrotCalculation()
 
   window.show()
   app.run()
