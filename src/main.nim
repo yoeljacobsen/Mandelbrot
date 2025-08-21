@@ -44,15 +44,71 @@ proc drawMandelbrot(canvas: Canvas) =
 proc main() =
   app.init()
 
-  var window = newWindow("Mandelbrot Set")
-  window.width = Width
-  window.height = Height
+  var window = newWindow("Mandelbrot set explorer")
+  window.width = 800
+  window.height = 600
 
+  var mainContainer = newLayoutContainer(Layout_Horizontal)
+  window.add(mainContainer)
+
+  # Left side: Image display area
   var mandelbrotControl = newControl()
-  mandelbrotControl.widthMode = WidthMode_Fill
+  mandelbrotControl.widthMode = WidthMode_Expand
   mandelbrotControl.heightMode = HeightMode_Fill
-  window.add(mandelbrotControl)
+  mainContainer.add(mandelbrotControl)
 
+  # Right side: Control panel
+  var controlPanel = newLayoutContainer(Layout_Vertical)
+  controlPanel.width = 200 # Adjust as needed
+  controlPanel.heightMode = HeightMode_Fill
+  mainContainer.add(controlPanel)
+
+  # Iterations
+  var iterationsLabel = newLabel("Iterations")
+  controlPanel.add(iterationsLabel)
+  var iterationsTextBox = newTextBox($maxIter)
+  controlPanel.add(iterationsTextBox)
+
+  # Zoom factor
+  var zoomFactorLabel = newLabel("Zoom factor")
+  controlPanel.add(zoomFactorLabel)
+  var zoomFactorTextBox = newTextBox("1.4142") # Placeholder value
+  controlPanel.add(zoomFactorTextBox)
+
+  # Palette
+  var paletteLabel = newLabel("Palette")
+  controlPanel.add(paletteLabel)
+  var paletteComboBox = newComboBox(@["1", "2", "3", "4"]) # Placeholder options
+  paletteComboBox.index = 3 # Selects "4"
+  controlPanel.add(paletteComboBox)
+
+  # Normalized checkbox
+  var normalizedCheckbox = newCheckbox("Normalized")
+  normalizedCheckbox.checked = true
+  controlPanel.add(normalizedCheckbox)
+
+  # Buttons
+  var refreshButton = newButton("Refresh")
+  controlPanel.add(refreshButton)
+  var backButton = newButton("Back")
+  controlPanel.add(backButton)
+  var saveImageButton = newButton("Save Image")
+  controlPanel.add(saveImageButton)
+  var saveConfigButton = newButton("Save Config")
+  controlPanel.add(saveConfigButton)
+  var homeButton = newButton("Home")
+  controlPanel.add(homeButton)
+
+  # Readout Labels
+  controlPanel.add(newLabel("Re: -1.344662847231080")) # Placeholder
+  controlPanel.add(newLabel("Im: 0.049957895942731")) # Placeholder
+  controlPanel.add(newLabel("Width: 1.5625000E-2")) # Placeholder
+  controlPanel.add(newLabel("Height: 1.5625000E-2")) # Placeholder
+  controlPanel.add(newLabel("Zoom: 256.0000")) # Placeholder
+  controlPanel.add(newLabel("Threads: 4")) # Placeholder
+  controlPanel.add(newLabel("Precision: double-float")) # Placeholder
+
+  # Integrate existing mouse event handling for zooming
   mandelbrotControl.onMouseButtonDown = proc(event: MouseEvent) =
     if event.button == MouseButton_Left:
       isDragging = true

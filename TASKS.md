@@ -9,13 +9,26 @@ This document lists the tasks required to develop the Mandelbrot set explorer, a
     -   [ ] Create a Makefile for building the project.
     -   [ ] Create and maintain a README.md file.
     -   [x] Set up a basic project structure with `src` and `tests` directories.
--   [x] **Mandelbrot Logic:**
-    -   [x] Implement the core Mandelbrot set calculation logic.
-    -   [x] Create a data structure to store the generated Mandelbrot set data.
--   [x] **Basic GUI:**
-    -   [x] Choose and set up a GUI library (NiGui).
-    -   [x] Create a basic window with a drawing area.
-    -   [x] Render the Mandelbrot set to the drawing area.
+-   [ ] **Mandelbrot Logic:**
+    -   [ ] Implement the core Mandelbrot set calculation logic.
+    -   [ ] Create a data structure to store the generated Mandelbrot set data.
+-   [ ] **GUI Implementation (based on GUI.png):**
+    -   [ ] Choose and set up a GUI library (NiGui).
+    -   [ ] Create the main window with a title "Mandelbrot set explorer".
+    -   [ ] Implement the main layout with an image display area on the left and a control panel on the right.
+    -   [ ] **Control Panel Elements:**
+        -   [ ] "Iterations" label and input field.
+        -   [ ] "Zoom factor" label and input field.
+        -   [ ] "Palette" label and dropdown (ComboBox).
+        -   [ ] "Normalized" checkbox.
+        -   [ ] "Refresh" button.
+        -   [ ] "Back" button.
+        -   [ ] "Save Image" button.
+        -   [ ] "Save Config" button.
+        -   [ ] "Home" button.
+        -   [ ] Readout labels for "Re:", "Im:", "Width:", "Height:", "Zoom:", "Threads:", "Precision:".
+    -   [ ] **Image Display Area:**
+        -   [ ] Implement drawing functionality to render the Mandelbrot set.
 
 ## Phase 2: User Interaction
 
@@ -26,21 +39,19 @@ This document lists the tasks required to develop the Mandelbrot set explorer, a
     -   [ ] Implement click-and-drag mouse functionality for panning.
     -   [ ] Update the view based on the panning action.
 -   [ ] **Iteration Control:**
-    -   [ ] Add a slider or input field to the GUI to control the number of iterations.
-    -   [ ] Update the Mandelbrot calculation to use the specified number of iterations.
+    -   [ ] Connect the "Iterations" input field to the Mandelbrot calculation.
 
 ## Phase 3: Visuals and Usability
 
 -   [ ] **Color Palettes:**
     -   [ ] Implement a selection of color palettes.
-    -   [ ] Add a dropdown menu or buttons to the GUI to switch between palettes.
--   [ ] **Control Panel:**
-    -   [ ] Create a dedicated control panel for all the UI controls.
+    -   [ ] Connect the "Palette" dropdown to switch between palettes.
 -   [ ] **Status Bar:**
     -   [ ] Add a status bar to display information like coordinates and zoom level.
 -   [ ] **Reset and Save:**
-    -   [ ] Implement the "Reset" button to go back to the initial view.
-    -   [ ] Implement the "Save" button to save the current view as a PNG image.
+    -   [ ] Implement the "Home" button to go back to the initial view.
+    -   [ ] Implement the "Save Image" button to save the current view as a PNG image.
+    -   [ ] Implement the "Save Config" button to save the current configuration.
 
 ## Phase 4: Performance and Refinements
 
