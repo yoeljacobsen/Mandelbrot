@@ -1,6 +1,7 @@
 import nigui
 import complex
 import chroma
+import threadpool
 
 type
   Palette* = enum
@@ -37,7 +38,7 @@ proc getColor(m: int, max_iter: int, palette: Palette): nigui.Color =
       let
         hue = (m mod 256).float * 360.0 / 256.0
         saturation = 1.0
-        value = if m < max_iter: 1.0 else: 0.0
+        value = 1.0 # Always full value for points outside the set
       let hsvColor = hsv(hue, saturation, value)
       let rgbColor: chroma.Color = color(hsvColor)
       result = nigui.rgb((rgbColor.r * 255).uint8, (rgbColor.g * 255).uint8, (rgbColor.b * 255).uint8)
@@ -64,33 +65,49 @@ var
   endX, endY: int     # Mouse up/current coordinates for drawing rectangle
 
 const
-  Width = 800
-  Height = 600
+  ImageWidth = 800 # Use a separate constant for image dimensions
+  ImageHeight = 600
 
-proc drawMandelbrot(canvas: Canvas) =
+var
+  mandelbrotControl: Control # Forward declaration for global access
+  pixelChannel: Channel[seq[nigui.Color]] # Channel for inter-thread communication
+  currentImagePixels: seq[nigui.Color] # Stores the latest calculated pixels for drawing
+
+# Procedure to calculate Mandelbrot set pixels in a separate thread
+proc calculateMandelbrotAsync(minX, maxX, minY, maxY: float64, maxIter: int, palette: Palette) =
+  var pixels = newSeq[nigui.Color](ImageWidth * ImageHeight)
   let rangeX = maxX - minX
   let rangeY = maxY - minY
-  for px in 0..<Width:
-    for py in 0..<Height:
-      let x0 = minX + (rangeX * float(px) / float(Width))
-      let y0 = minY + (rangeY * float(py) / float(Height))
+
+  for py in 0..<ImageHeight:
+    for px in 0..<ImageWidth:
+      let x0 = minX + (rangeX * float(px) / float(ImageWidth))
+      let y0 = minY + (rangeY * float(py) / float(ImageHeight))
       let c = complex(x0, y0)
       let m = mandelbrot(c, maxIter)
-      let color = getColor(m, maxIter, currentPalette)
-      canvas.setPixel(px, py, color)
+      pixels[py * ImageWidth + px] = getColor(m, maxIter, palette)
+
+  pixelChannel.send(pixels) # Send calculated pixels to the main thread via channel
+
+# Triggers the Mandelbrot calculation in a separate thread
+proc drawMandelbrot(canvas: Canvas) =
+  spawn calculateMandelbrotAsync(minX, maxX, minY, maxY, maxIter, currentPalette)
 
 proc main() =
   app.init()
 
+  pixelChannel.open() # Open the channel for communication
+  currentImagePixels = newSeq[nigui.Color](ImageWidth * ImageHeight) # Initialize pixel buffer
+
   var window = newWindow("Mandelbrot set explorer")
-  window.width = 800
-  window.height = 600
+  window.width = ImageWidth
+  window.height = ImageHeight
 
   var mainContainer = newLayoutContainer(Layout_Horizontal)
   window.add(mainContainer)
 
   # Left side: Image display area
-  var mandelbrotControl = newControl()
+  mandelbrotControl = newControl()
   mandelbrotControl.widthMode = WidthMode_Expand
   mandelbrotControl.heightMode = HeightMode_Fill
   mainContainer.add(mandelbrotControl)
@@ -146,7 +163,7 @@ proc main() =
   controlPanel.add(newLabel("Threads: 4")) # Placeholder
   controlPanel.add(newLabel("Precision: double-float")) # Placeholder
 
-  # Integrate existing mouse event handling for zooming
+  # Mouse event handling for zooming and zoom out
   mandelbrotControl.onMouseButtonDown = proc(event: MouseEvent) =
     if event.button == MouseButton_Left:
       isDragging = true
@@ -166,10 +183,10 @@ proc main() =
       endY = event.y
 
       # Calculate new complex coordinates based on selected rectangle
-      let newMinX = minX + (maxX - minX) * min(startX, endX).float / Width.float
-      let newMaxX = minX + (maxX - minX) * max(startX, endX).float / Width.float
-      let newMinY = minY + (maxY - minY) * min(startY, endY).float / Height.float
-      let newMaxY = minY + (maxY - minY) * max(startY, endY).float / Height.float
+      let newMinX = minX + (maxX - minX) * min(startX, endX).float / ImageWidth.float
+      let newMaxX = minX + (maxX - minX) * max(startX, endX).float / ImageWidth.float
+      let newMinY = minY + (maxY - minY) * min(startY, endY).float / ImageHeight.float
+      let newMaxY = minY + (maxY - minY) * max(startY, endY).float / ImageHeight.float
 
       minX = newMinX
       maxX = newMaxX
@@ -177,13 +194,29 @@ proc main() =
       maxY = newMaxY
 
       mandelbrotControl.forceRedraw() # Redraw with new zoom
+    elif event.button == MouseButton_Right: # Zoom out with right click
+      minX = -2.5
+      maxX = 1.0
+      minY = -1.0
+      maxY = 1.0
+      mandelbrotControl.forceRedraw()
 
+  # Drawing event handler for the Mandelbrot control
   mandelbrotControl.onDraw = proc(event: DrawEvent) =
-    drawMandelbrot(event.control.canvas)
+    # Draw the stored pixels from the last completed calculation
+    for py in 0..<ImageHeight:
+      for px in 0..<ImageWidth:
+        event.control.canvas.setPixel(px, py, currentImagePixels[py * ImageWidth + px])
+
+    # Draw selection rectangle if dragging
     if isDragging:
       event.control.canvas.lineColor = nigui.rgb(255, 255, 255) # White rectangle
       event.control.canvas.drawRectOutline(min(startX, endX), min(startY, endY),
                                       abs(endX - startX), abs(endY - startY))
+
+    # Trigger calculation if not already calculating (e.g., on initial draw or after zoom/palette change)
+    # A more robust solution would involve a state machine to prevent multiple calculations
+    drawMandelbrot(event.control.canvas) # This now only spawns the async calculation
 
   # Event handler for palette ComboBox
   paletteComboBox.onChange = proc(event: ComboBoxChangeEvent) =
@@ -194,6 +227,15 @@ proc main() =
     of 3: currentPalette = Palette4
     else: discard
     mandelbrotControl.forceRedraw()
+
+  # Timer to check for new pixel data from the channel
+  # This timer runs on the main GUI thread and safely updates the UI
+  var timer = startRepeatingTimer(100, proc(event: TimerEvent) =
+    let (dataAvailable, receivedPixels) = pixelChannel.tryRecv() # Attempt to receive pixels from worker thread
+    if dataAvailable:
+      currentImagePixels = receivedPixels # Store the received pixels
+      mandelbrotControl.forceRedraw() # Trigger redraw of the Mandelbrot control
+  )
 
   window.show()
   app.run()

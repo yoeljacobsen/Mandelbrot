@@ -33,9 +33,9 @@ This document lists the tasks required to develop the Mandelbrot set explorer, a
 
 ## Phase 2: User Interaction
 
--   [ ] **Zooming:**
-    -   [ ] Implement mouse selection to define a zoom region.
-    -   [ ] Update the view to the selected region.
+-   [x] **Zooming:**
+    -   [x] Implement mouse selection to define a zoom region.
+    -   [x] Update the view to the selected region.
 -   [ ] **Panning:**
     -   [ ] Implement click-and-drag mouse functionality for panning.
     -   [ ] Update the view based on the panning action.
@@ -50,15 +50,15 @@ This document lists the tasks required to develop the Mandelbrot set explorer, a
 -   [ ] **Status Bar:**
     -   [ ] Add a status bar to display information like coordinates and zoom level.
 -   [ ] **Reset and Save:**
-    -   [ ] Implement the "Home" button to go back to the initial view.
+    -   [x] Implement right-click to zoom out to the initial view.
     -   [ ] Implement the "Save Image" button to save the current view as a PNG image.
     -   [ ] Implement the "Save Config" button to save the current configuration.
 
 ## Phase 4: Performance and Refinements
 
--   [ ] **Performance Optimization:**
-    -   [ ] Profile the application to identify performance bottlenecks.
-    -   [ ] Implement multi-threading to speed up the Mandelbrot calculation.
+-   [x] **Performance Optimization:**
+    -   [x] Profile the application to identify performance bottlenecks.
+    -   [x] Implement multi-threading to speed up the Mandelbrot calculation.
 -   [ ] **Code Refactoring:**
     -   [ ] Review and refactor the code for clarity, efficiency, and maintainability.
     -   [ ] Add comments and documentation to the code.
